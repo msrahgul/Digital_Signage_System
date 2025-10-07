@@ -1,0 +1,42 @@
+# Logs
+**/logs/
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# CMS Portal
+CMS\ PORTAL/node_modules/
+CMS\ PORTAL/docker-compose.yml
+CMS\ PORTAL/package-lock.json
+CMS\ PORTAL/backend/node_modules/
+CMS\ PORTAL/backend/data/
+CMS\ PORTAL/backend/uploads/
+CMS\ PORTAL/frontend/node_modules/
+CMS\ PORTAL/frontend/.bolt/
+
+
+# Player App
+Player\ App/media_cache/
+Player\ App/current_schedule.json
+Player\ App/device_info.json
+Player\ App/player_config.json
+Player\ App/player_debug.log
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env

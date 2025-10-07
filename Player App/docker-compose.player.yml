@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  signage-player:
+    build: .
+    container_name: signage-player
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      # For persistent media cache
+      - ./media_cache:/app/media_cache
+      # For config persistence
+      - ./config:/app/config
+      # For audio support on Linux
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev/snd:/dev/snd
+    environment:
+      - DISPLAY=${DISPLAY}
+      - PULSE_SERVER=unix:/tmp/pulse/native
+    devices:
+      - /dev/dri:/dev/dri  # For GPU acceleration if available
+    privileged: true  # Needed for audio/video hardware access

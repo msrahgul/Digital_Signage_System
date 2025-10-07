@@ -1,0 +1,13 @@
+media_cache
+device_info.json
+current_schedules.json
+player_config.json
+player_debug.log
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+.env
+.git
