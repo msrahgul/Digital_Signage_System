@@ -46,6 +46,9 @@ const SETTINGS_JSON_PATH = path.join(DATA_DIR, 'settings.json');
 // Store active WebSocket connections
 const playerConnections = new Map();
 
+// Store player states for real-time preview
+const playerStates = new Map();
+
 // Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -897,6 +900,58 @@ app.post('/players/:id/command', async (req, res) => {
   }
 });
 
+// Player state endpoints for real-time preview
+app.post('/api/players/:playerId/state', (req, res) => {
+  const { playerId } = req.params;
+  const state = req.body;
+  
+  // Construct the absolute URL for media
+  if (state.mediaUrl && !state.mediaUrl.startsWith('http')) {
+      const baseUrl = `${req.protocol}://${req.get('host')}/`;
+      // Use URL constructor to handle joining paths correctly, avoiding double slashes.
+      const absoluteUrl = new URL(state.mediaUrl.replace(/\\/g, '/'), baseUrl);
+      state.mediaUrl = absoluteUrl.href;
+  }
+
+  state.timestamp = new Date().toISOString();
+  playerStates.set(playerId, state);
+  
+  // SSE push to subscribers
+  const sseConnection = sseConnections.get(playerId);
+  if (sseConnection) {
+    sseConnection.res.write(`data: ${JSON.stringify(state)}\n\n`);
+  }
+  
+  res.sendStatus(200);
+});
+
+const sseConnections = new Map();
+
+app.get('/api/players/:playerId/subscribe', (req, res) => {
+  const { playerId } = req.params;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  sseConnections.set(playerId, { res });
+
+  req.on('close', () => {
+    sseConnections.delete(playerId);
+  });
+});
+
+app.get('/api/players/:playerId/preview', (req, res) => {
+  const { playerId } = req.params;
+  const state = playerStates.get(playerId);
+  if (state) {
+    res.json(state);
+  } else {
+    res.status(404).json({ status: 'offline' });
+  }
+});
+
 // ENHANCED Get player schedule - INCLUDES TICKER SETTINGS
 app.get('/player-schedule/:playerId', async (req, res) => {
   try {
@@ -1043,6 +1098,7 @@ wss.on('connection', (ws, req) => {
               players[playerIndex].status = 'online';
               players[playerIndex].lastSync = new Date().toISOString();
               await savePlayers(players);
+              playerStates.set(message.playerId, { status: 'online', timestamp: new Date().toISOString() });
               broadcastToCMS({ type: 'player-connected', player: players[playerIndex] });
             }
 
@@ -1115,6 +1171,15 @@ wss.on('connection', (ws, req) => {
         players[playerIndex].status = 'offline';
         players[playerIndex].lastSync = new Date().toISOString();
         await savePlayers(players);
+        
+        const offlineState = { status: 'offline', timestamp: new Date().toISOString() };
+        playerStates.set(playerId, offlineState);
+
+        const sseConnection = sseConnections.get(playerId);
+        if (sseConnection) {
+            sseConnection.res.write(`data: ${JSON.stringify(offlineState)}\n\n`);
+        }
+        
         broadcastToCMS({ type: 'player-disconnected', player: players[playerIndex] });
       }
 

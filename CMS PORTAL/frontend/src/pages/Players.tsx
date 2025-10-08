@@ -3,6 +3,7 @@ import { Player } from '../types';
 import PlayerTable from '../components/Player/PlayerTable';
 import PlayerDetailsModal from '../components/Player/PlayerDetailsModal';
 import PlayerEditModal from '../components/Player/PlayerEditModal';
+import PlayerPreviewModal from '../components/Player/PlayerPreviewModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { Monitor, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 
@@ -13,6 +14,7 @@ const Players: React.FC = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,11 @@ const Players: React.FC = () => {
   const handlePlayerDetails = (player: Player) => {
     setSelectedPlayer(player);
     setShowDetailsModal(true);
+  };
+
+  const handlePlayerPreview = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowPreviewModal(true);
   };
 
   const handleEditPlayer = (player: Player) => {
@@ -189,6 +196,7 @@ const Players: React.FC = () => {
         onDetails={handlePlayerDetails}
         onEdit={handleEditPlayer}
         onDelete={handleDeletePlayer}
+        onPreview={handlePlayerPreview}
         onRestart={handleRestartPlayer}
       />
 
@@ -220,6 +228,13 @@ const Players: React.FC = () => {
           setSelectedPlayer(null);
         }}
       />
+
+      {showPreviewModal && selectedPlayer && (
+        <PlayerPreviewModal
+          player={selectedPlayer}
+          onClose={() => setShowPreviewModal(false)}
+        />
+      )}
     </div>
   );
 };

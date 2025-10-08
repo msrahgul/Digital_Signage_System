@@ -83,22 +83,6 @@ const PlayerDetailsModal: React.FC<PlayerDetailsModalProps> = ({ player, onClose
                 </div>
               </div>
 
-              {/* Current Content */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Current Content</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  {player.currentPlaylist ? (
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{player.currentPlaylist}</p>
-                      <p className="text-xs text-gray-500 mt-1">Active playlist</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No content currently playing</p>
-                  )}
-                </div>
-              </div>
-
-              
             </div>
 
             {/* Footer */}

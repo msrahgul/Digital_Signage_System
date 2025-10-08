@@ -1,11 +1,12 @@
 import React from 'react';
 import { Player } from '../../types';
-import { Monitor, Edit, Trash2, RotateCcw, Eye } from 'lucide-react';
+import { Monitor, Edit, Trash2, RotateCcw, Eye, PlaySquare } from 'lucide-react';
 
 interface PlayerTableProps {
   players: Player[];
   onDetails: (player: Player) => void;
   onEdit: (player: Player) => void;
+  onPreview: (player: Player) => void;
   onDelete: (player: Player) => void;
   onRestart: (id: string) => void;
 }
@@ -13,6 +14,7 @@ interface PlayerTableProps {
 const PlayerTable: React.FC<PlayerTableProps> = ({
   players,
   onDetails,
+  onPreview,
   onEdit,
   onDelete,
   onRestart
@@ -122,6 +124,13 @@ const PlayerTable: React.FC<PlayerTableProps> = ({
                       title="View Details"
                     >
                       <Eye size={16} />
+                    </button>
+                    <button
+                      onClick={() => onPreview(player)}
+                      className="text-blue-600 hover:text-blue-900"
+                      title="Live Preview"
+                    >
+                      <PlaySquare size={16} />
                     </button>
                     <button
                       onClick={() => onEdit(player)}

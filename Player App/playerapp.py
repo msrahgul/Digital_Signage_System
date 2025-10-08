@@ -16,10 +16,14 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 import hashlib
 import vlc
 import sys
+from urllib.parse import urljoin
 
 # Configuration
+# IMPORTANT: Replace "YOUR_SERVER_IP" with the actual IP address of your backend server.
+# For example: "http://192.168.1.100:4000/"
 BACKEND_URL = "http://10.111.76.220:4000/"
-WS_URL = "ws://10.111.76.220:4000"
+WS_URL = f"ws://{BACKEND_URL.split('//')[1].split(':')[0]}:4000"
+
 CACHE_DIR = "media_cache"
 CONFIG_FILE = "player_config.json"
 SCHEDULE_CACHE_FILE = "current_schedule.json"
@@ -306,7 +310,9 @@ class UltraPlayerManager:
             self.shutdown()
         
         elif message_type == 'content-changed':
-            print("🚀 INSTANT CONTENT UPDATE RECEIVED!")
+            print("🚀 INSTANT CONTENT UPDATE RECEIVED! Waiting 1s for server...")
+            # FIX: Wait 1 second before triggering the refresh
+            time.sleep(1)
             with self.content_update_lock:
                 self.content_update_queue.append('instant_check')
         
@@ -365,6 +371,28 @@ class UltraPlayerManager:
         except Exception as e:
             print(f"Status update error: {e}")
     
+    def push_playback_state(self, media_item, status, current_time=0):
+        if not self.player_id:
+            return
+
+        media_type = media_item.get('type') if media_item else 'none'
+        # FIX: ONLY send the relative path, not the full URL.
+        relative_url = media_item.get('url', '') if media_item else ''
+
+        state = {
+            'playerId': self.player_id,
+            'status': status,
+            'mediaType': media_type,
+            'mediaUrl': relative_url, # Pass the relative URL
+            'currentTime': current_time,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        try:
+            requests.post(f"{BACKEND_URL}api/players/{self.player_id}/state", json=state, timeout=2)
+        except Exception as e:
+            print(f"Failed to push player state: {e}")
+
     def shutdown(self):
         self.connected = False
         if self.vlc_player:
@@ -487,9 +515,10 @@ class UltraDisplayApp:
         return True
     
     def make_full_url(self, path):
+        # FIX: Use urljoin for robust URL construction
         if path.startswith(('http://', 'https://')):
             return path
-        return f"{BACKEND_URL.rstrip('/')}/{path.lstrip('/')}"
+        return urljoin(BACKEND_URL, path)
     
     def download_media_file(self, media_item):
         try:
@@ -500,7 +529,7 @@ class UltraDisplayApp:
             if os.path.exists(local_path):
                 return local_path
             
-            print(f"📥 Downloading {media_item.get('name', 'Unknown')}...")
+            print(f"📥 Downloading {media_item.get('name', 'Unknown')} from {url}...")
             with requests.get(url, stream=True, timeout=60) as r:
                 r.raise_for_status()
                 with open(local_path, 'wb') as f:
@@ -931,6 +960,7 @@ class UltraDisplayApp:
             
             if success:
                 self.media_start_time = now
+                self.player_manager.push_playback_state(self.current_media_item, 'playing')
                 self.current_index += 1
             else:
                 print(f"❌ Failed to display {self.current_media_item.get('name', 'Unknown')}")
@@ -939,6 +969,7 @@ class UltraDisplayApp:
     
     def show_waiting_screen(self):
         if not self.current_media_list and (time.time() - self.last_schedule_check > 2):
+            self.player_manager.push_playback_state(None, 'idle')
             self.display_text("Waiting for content from CMS...")
     
     def main_loop(self):
@@ -961,6 +992,14 @@ class UltraDisplayApp:
             if now - self.last_heartbeat > 60:
                 self.player_manager.send_heartbeat()
                 self.last_heartbeat = now
+
+            if self.current_media_item and self.current_media_item.get('type') == 'video' and self.player_manager.vlc_player:
+                try:
+                    vlc_time = self.player_manager.vlc_player.get_time() / 1000.0
+                    if vlc_time > 0:
+                        self.player_manager.push_playback_state(self.current_media_item, 'playing', vlc_time)
+                except Exception:
+                    pass
             
             if not self.is_destroying:
                 self.root.after(100, self.main_loop)
