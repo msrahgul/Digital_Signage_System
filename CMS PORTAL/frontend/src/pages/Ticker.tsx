@@ -1,6 +1,6 @@
 // src/pages/Ticker.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { Save, AlertTriangle, Plus, Edit, Trash2, Play, Pause, Zap } from 'lucide-react';
+import { Save, AlertTriangle, Plus, Edit, Trash2, Play, Zap } from 'lucide-react';
 
 const BACKEND_URL = 'http://localhost:4000';
 
@@ -50,21 +50,17 @@ const Ticker: React.FC = () => {
     setSaving(true);
     setSaveMessage('');
     try {
-      // Combine all ticker texts into one string
       const combinedTickerText = tickers.map(t => t.text).join(' • ');
-      
       const settings = {
         tickerText: combinedTickerText,
-        tickers: tickers,
-        tickerEnabled: tickerEnabled,
-        tickerSpeed: tickerSpeed
+        tickers,
+        tickerEnabled,
+        tickerSpeed,
       };
 
       const response = await fetch(`${BACKEND_URL}/settings`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
 
@@ -103,15 +99,13 @@ const Ticker: React.FC = () => {
 
   const handleUpdateTicker = () => {
     if (editingTicker && editingTicker.text.trim()) {
-      setTickers(tickers.map(t => t.id === editingTicker.id ? editingTicker : t));
+      setTickers(tickers.map(t => (t.id === editingTicker.id ? editingTicker : t)));
       setEditingTicker(null);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent, action: () => void) => {
-    if (e.key === 'Enter') {
-      action();
-    }
+    if (e.key === 'Enter') action();
   };
 
   if (loading) {
@@ -129,68 +123,6 @@ const Ticker: React.FC = () => {
         <p className="text-gray-600 mb-6">
           Manage the scrolling text that appears at the bottom of your displays with full control over visibility and speed.
         </p>
-
-        {/* Ticker Controls */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Ticker Controls</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Enable/Disable Ticker */}
-            <div>
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={tickerEnabled}
-                    onChange={(e) => setTickerEnabled(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div className={`block w-14 h-8 rounded-full transition-colors duration-200 ${
-                    tickerEnabled ? 'bg-green-500' : 'bg-gray-300'
-                  }`}></div>
-                  <div className={`absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition-transform duration-200 transform ${
-                    tickerEnabled ? 'translate-x-6' : 'translate-x-0'
-                  }`}></div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {tickerEnabled ? (
-                    <Play className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Pause className="h-5 w-5 text-gray-600" />
-                  )}
-                  <span className="text-lg font-medium">
-                    Ticker {tickerEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-              </label>
-            </div>
-
-            {/* Speed Control */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Zap className="inline h-4 w-4 mr-1" />
-                Ticker Speed: {tickerSpeed}x
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="0.5"
-                value={tickerSpeed}
-                onChange={(e) => setTickerSpeed(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(tickerSpeed - 1) / 4 * 100}%, #E5E7EB ${(tickerSpeed - 1) / 4 * 100}%, #E5E7EB 100%)`
-                }}
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Slow</span>
-                <span>Normal</span>
-                <span>Fast</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Add New Ticker */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -230,7 +162,7 @@ const Ticker: React.FC = () => {
                   <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
                     {index + 1}
                   </div>
-                  
+
                   {editingTicker?.id === ticker.id ? (
                     <input
                       type="text"
@@ -294,6 +226,51 @@ const Ticker: React.FC = () => {
           )}
         </div>
 
+        {/* Ticker Controls */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Ticker Controls</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Ticker Status Display */}
+            <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg p-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+                <Play className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-green-700">Ticker Enabled</h3>
+                <p className="text-sm text-green-600">
+                  The ticker is currently active and visible on displays.
+                </p>
+              </div>
+            </div>
+
+            {/* Speed Control */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Zap className="inline h-4 w-4 mr-1" />
+                Ticker Speed: {tickerSpeed}x
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="0.5"
+                value={tickerSpeed}
+                onChange={(e) => setTickerSpeed(parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(tickerSpeed - 1) / 4 * 100}%, #E5E7EB ${(tickerSpeed - 1) / 4 * 100}%, #E5E7EB 100%)`,
+                }}
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Slow</span>
+                <span>Normal</span>
+                <span>Fast</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Preview */}
         {tickers.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -330,18 +307,20 @@ const Ticker: React.FC = () => {
                   </>
                 )}
               </button>
-              
+
               {saveMessage && (
-                <div className={`px-4 py-2 rounded-lg font-medium ${
-                  saveMessage.includes('✅') 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                <div
+                  className={`px-4 py-2 rounded-lg font-medium ${
+                    saveMessage.includes('✅')
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
                   {saveMessage}
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center space-x-2 text-orange-600">
               <AlertTriangle className="h-5 w-5" />
               <span className="text-sm font-medium">Don't Forget to Save Your Changes</span>
@@ -352,8 +331,12 @@ const Ticker: React.FC = () => {
 
       <style jsx>{`
         @keyframes scroll {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
+          0% {
+            transform: translateX(100%);
+          }
+          100% {
+            transform: translateX(-100%);
+          }
         }
         .animate-scroll {
           animation: scroll 10s linear infinite;
