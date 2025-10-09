@@ -905,9 +905,9 @@ app.post('/api/players/:playerId/state', (req, res) => {
   const { playerId } = req.params;
   const state = req.body;
   
-  // Construct the absolute URL for media
+  // FIX: Construct the absolute URL for media robustly
   if (state.mediaUrl && !state.mediaUrl.startsWith('http')) {
-      const baseUrl = `${req.protocol}://${req.get('host')}/`;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
       // Use URL constructor to handle joining paths correctly, avoiding double slashes.
       const absoluteUrl = new URL(state.mediaUrl.replace(/\\/g, '/'), baseUrl);
       state.mediaUrl = absoluteUrl.href;

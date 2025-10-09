@@ -16,7 +16,6 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 import hashlib
 import vlc
 import sys
-from urllib.parse import urljoin
 
 # Configuration
 # IMPORTANT: Replace "YOUR_SERVER_IP" with the actual IP address of your backend server.
@@ -28,7 +27,7 @@ CACHE_DIR = "media_cache"
 CONFIG_FILE = "player_config.json"
 SCHEDULE_CACHE_FILE = "current_schedule.json"
 DEVICE_INFO_FILE = "device_info.json"
-LOGO_PATH = "KIDS Logo.png"  # Updated to match your logo file
+LOGO_PATH = "KIDS Logo.png"
 
 # Ensure cache directory exists
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -310,9 +309,7 @@ class UltraPlayerManager:
             self.shutdown()
         
         elif message_type == 'content-changed':
-            print("🚀 INSTANT CONTENT UPDATE RECEIVED! Waiting 1s for server...")
-            # FIX: Wait 1 second before triggering the refresh
-            time.sleep(1)
+            print("🚀 INSTANT CONTENT UPDATE RECEIVED!")
             with self.content_update_lock:
                 self.content_update_queue.append('instant_check')
         
@@ -376,14 +373,14 @@ class UltraPlayerManager:
             return
 
         media_type = media_item.get('type') if media_item else 'none'
-        # FIX: ONLY send the relative path, not the full URL.
+        # FIX: Send only the relative path to the server
         relative_url = media_item.get('url', '') if media_item else ''
 
         state = {
             'playerId': self.player_id,
             'status': status,
             'mediaType': media_type,
-            'mediaUrl': relative_url, # Pass the relative URL
+            'mediaUrl': relative_url,
             'currentTime': current_time,
             'timestamp': datetime.now().isoformat()
         }
@@ -515,10 +512,9 @@ class UltraDisplayApp:
         return True
     
     def make_full_url(self, path):
-        # FIX: Use urljoin for robust URL construction
         if path.startswith(('http://', 'https://')):
             return path
-        return urljoin(BACKEND_URL, path)
+        return f"{BACKEND_URL.rstrip('/')}/{path.lstrip('/')}"
     
     def download_media_file(self, media_item):
         try:
@@ -529,7 +525,7 @@ class UltraDisplayApp:
             if os.path.exists(local_path):
                 return local_path
             
-            print(f"📥 Downloading {media_item.get('name', 'Unknown')} from {url}...")
+            print(f"📥 Downloading {media_item.get('name', 'Unknown')}...")
             with requests.get(url, stream=True, timeout=60) as r:
                 r.raise_for_status()
                 with open(local_path, 'wb') as f:

@@ -45,16 +45,6 @@ const PlayerTable: React.FC<PlayerTableProps> = ({
     return date.toLocaleDateString();
   };
 
-  const getCurrentContent = (player: Player) => {
-    if (player.status !== 'online') {
-      return <span className="text-gray-400 italic">No content is playing</span>;
-    }
-    if (!player.currentPlaylist || player.currentPlaylist.trim() === '') {
-      return <span className="text-gray-400 italic">No content is playing</span>;
-    }
-    return <span className="text-gray-900">{player.currentPlaylist}</span>;
-  };
-
   if (players.length === 0) {
     return (
       <div className="text-center py-12">
@@ -81,9 +71,6 @@ const PlayerTable: React.FC<PlayerTableProps> = ({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Current Content
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Last Sync
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -108,9 +95,6 @@ const PlayerTable: React.FC<PlayerTableProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(player.status)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {getCurrentContent(player)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{formatLastSync(player.lastSync)}</div>
