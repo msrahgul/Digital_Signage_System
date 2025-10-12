@@ -10,7 +10,7 @@ export interface User {
 export interface MediaItem {
   id: string;
   name: string;
-  type: 'image' | 'video' | 'text' | 'document' | 'url' | 'document-group';
+  type: 'image' | 'video' | 'document' | 'url' | 'document-group';
   url: string;
   fileSize: number;
   uploadedAt: string;
@@ -18,6 +18,7 @@ export interface MediaItem {
   tags: string[];
   pages?: string[]; // For document-group
   groupId?: string; // For document pages
+  playlistDuration?: number;
 }
 
 
@@ -25,7 +26,7 @@ export interface Playlist {
   id: string;
   name: string;
   description: string;
-  mediaItems: string[]; // media IDs
+  mediaItems: any[]; 
   totalDuration: number;
   createdAt: string;
   createdBy: string;
@@ -35,7 +36,8 @@ export interface Playlist {
 export interface Schedule {
   id: string;
   name: string;
-  playlistId: string;
+  playlistId: string; // for backwards compatibility
+  playlistIds: string[];
   playerIds: string[];
   startDate: string;
   endDate: string;
@@ -44,8 +46,8 @@ export interface Schedule {
   isActive: boolean;
   createdAt: string;
   createdBy: string;
-  priority: number; // NEW: Priority for sequential execution (lower number = higher priority)
-  executionMode: 'sequential' | 'replace'; // NEW: How to handle conflicts
+  priority: number; 
+  executionMode: 'sequential' | 'replace';
   tickerText?: string;
 }
 
@@ -58,16 +60,17 @@ export interface Player {
   id: string;
   name: string;
   location: string;
-  status: 'online' | 'offline';
+  status: 'online' | 'offline' | 'connecting';
   lastSync: string;
   currentPlaylist?: string;
-  currentSchedule?: string; // NEW: Track current schedule
-  upcomingSchedules?: ScheduleExecution[]; // NEW: Queue of upcoming schedules
+  currentSchedule?: string;
+  upcomingSchedules?: ScheduleExecution[];
   ipAddress: string;
   version: string;
+  deviceInfo?: any;
+  isConnected?: boolean;
 }
 
-// NEW: Interface for schedule execution queue
 export interface ScheduleExecution {
   scheduleId: string;
   scheduleName: string;
@@ -80,7 +83,6 @@ export interface ScheduleExecution {
   executionOrder: number;
 }
 
-// NEW: Interface for schedule conflicts
 export interface ScheduleConflict {
   timeSlot: string;
   playerIds: string[];

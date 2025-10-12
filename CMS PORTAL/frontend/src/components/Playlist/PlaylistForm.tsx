@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Playlist, MediaItem, PlaylistMediaItem } from '../../types';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Save, X, Plus, GripVertical, Clock, Image, Video, Type, Trash2, FileText } from 'lucide-react';
+import { Playlist, MediaItem } from '../../types';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { Save, X, Plus, GripVertical, Clock, Image, Video, Trash2, FileText } from 'lucide-react';
 
 interface PlaylistFormProps {
   playlist: Playlist | null;
@@ -17,11 +17,11 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({ playlist, media, onSave, on
     isActive: playlist?.isActive ?? true
   });
 
-  const [selectedMediaItems, setSelectedMediaItems] = useState<PlaylistMediaItem[]>(
+  const [selectedMediaItems, setSelectedMediaItems] = useState<any[]>(
     playlist?.mediaItems || []
   );
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const items = Array.from(selectedMediaItems);
     const [reorderedItem] = items.splice(result.source.index, 1);
@@ -43,7 +43,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({ playlist, media, onSave, on
           }
           return null;
         })
-        .filter((item): item is PlaylistMediaItem => item !== null);
+        .filter((item): item is any => item !== null);
 
       setSelectedMediaItems([...selectedMediaItems, ...newItems]);
     } else {
@@ -96,7 +96,6 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({ playlist, media, onSave, on
     switch (type) {
       case 'image': return <Image size={16} className="text-blue-500" />;
       case 'video': return <Video size={16} className="text-green-500" />;
-      case 'text': return <Type size={16} className="text-purple-500" />;
       case 'document-group': return <FileText size={16} className="text-indigo-500" />;
       default: return null;
     }
@@ -110,7 +109,7 @@ const PlaylistForm: React.FC<PlaylistFormProps> = ({ playlist, media, onSave, on
         // Try to get actual video duration
         const video = document.createElement('video');
         video.preload = 'metadata';
-        video.src = `http://localhost:4000${mediaItem.url}`;
+        video.src = `${window.location.protocol}//${window.location.hostname}:4000${mediaItem.url}`;
         video.onloadedmetadata = () => {
           if (video.duration && !isNaN(video.duration)) {
             updateMediaDuration(item.mediaId, Math.round(video.duration));

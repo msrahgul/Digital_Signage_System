@@ -21,13 +21,15 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem('user');
+    // Use sessionStorage to persist login only for the duration of the tab session
+    const storedUser = sessionStorage.getItem('user');
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('user');
+    // Remove the user from sessionStorage on explicit logout
+    sessionStorage.removeItem('user');
   }, []);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const resetInactivityTimer = () => {
       clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(logout, 15 * 60 * 1000); // 15 minutes
+      inactivityTimer = setTimeout(logout, 15 * 60 * 1000); // 15 minutes inactivity logout
     };
 
     const handleActivity = () => {
@@ -55,12 +57,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [logout]);
 
   const login = (username: string, password: string): boolean => {
-    // Mock authentication - in production this would call an API
+    // Mock authentication
     const foundUser = mockUsers.find(u => u.username === username);
 
     if (foundUser && password === 'password') { // Simple mock password
       setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+      // Save the user to sessionStorage
+      sessionStorage.setItem('user', JSON.stringify(foundUser));
       return true;
     }
     return false;

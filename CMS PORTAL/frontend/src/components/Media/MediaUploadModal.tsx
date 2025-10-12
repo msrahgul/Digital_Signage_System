@@ -48,7 +48,7 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onClose, onUpload }) => {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [name, setName] = useState('');
-  const [type, setType] = useState<'image' | 'video' | 'document' | 'text'>(
+  const [type, setType] = useState<'image' | 'video' | 'document'>(
     'image'
   );
   const [duration, setDuration] = useState<number>(5);
@@ -68,7 +68,6 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ onClose, onUpload }) => {
     if (isImageFile(file)) setType('image');
     else if (isVideoFile(file)) setType('video');
     else if (isDocumentFile(file)) setType('document');
-    else setType('text');
 
     const suggestedName = file.name.replace(/\.[^/.]+$/, '');
     setName((prev) => (prev === '' ? suggestedName : prev));

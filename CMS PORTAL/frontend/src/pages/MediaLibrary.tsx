@@ -6,10 +6,9 @@ import MediaPreviewModal from '../components/Media/MediaPreviewModal';
 import { MediaItem } from '../types';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 
-const BACKEND_URL = 'http://localhost:4000'; // Adjust if backend is remote
+const BACKEND_URL = 'http://localhost:4000';
 
-// Extend filterType to include "document"
-type FilterType = 'all' | 'image' | 'video' | 'text' | 'document';
+type FilterType = 'all' | 'image' | 'video' | 'document';
 
 const MediaLibrary: React.FC = () => {
   const { user } = useAuth();
@@ -22,7 +21,6 @@ const MediaLibrary: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MediaItem | null>(null);
 
-  // Fetch media list from backend
   const fetchMedia = useCallback(async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/media`);
@@ -39,7 +37,6 @@ const MediaLibrary: React.FC = () => {
     }
   }, []);
 
-  // Confirm delete
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setShowDeleteModal(false);
@@ -61,7 +58,6 @@ const MediaLibrary: React.FC = () => {
     setDeleteTarget(null);
   };
 
-  // Initial load & websocket
   useEffect(() => {
     fetchMedia();
 
@@ -81,7 +77,6 @@ const MediaLibrary: React.FC = () => {
     };
   }, [fetchMedia]);
 
-  // Handle media upload
   const handleUpload = async (
     newMediaData: Omit<
       MediaItem,
@@ -122,15 +117,13 @@ const MediaLibrary: React.FC = () => {
     setShowDeleteModal(true);
   };
 
-  // Show preview modal
   const handlePreview = (mediaItem: MediaItem) => {
     setSelectedMedia(mediaItem);
     setShowPreviewModal(true);
   };
 
-  // Filter media list by search and type
   const filteredMedia = media.filter((item) => {
-    if (item.groupId) { // Hide individual document pages
+    if (item.groupId) { 
       return false;
     }
     const matchesSearch =
@@ -174,7 +167,6 @@ const MediaLibrary: React.FC = () => {
           <option value="all">All Types</option>
           <option value="image">Images</option>
           <option value="video">Videos</option>
-          <option value="text">Text</option>
           <option value="document">Documents (PDF, PPTX, DOCX)</option>
         </select>
       </div>
@@ -196,6 +188,7 @@ const MediaLibrary: React.FC = () => {
       {showPreviewModal && selectedMedia && (
         <MediaPreviewModal
           media={selectedMedia}
+          allMedia={media}
           onClose={() => setShowPreviewModal(false)}
         />
       )}
@@ -214,4 +207,3 @@ const MediaLibrary: React.FC = () => {
 };
 
 export default MediaLibrary;
-

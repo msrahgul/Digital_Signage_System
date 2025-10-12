@@ -5,19 +5,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import Layout from './components/Layout';
-
 import LoginForm from './components/LoginForm';
-
 import Dashboard from './pages/Dashboard';
-
 import MediaLibrary from './pages/MediaLibrary';
-
 import PlaylistBuilder from './pages/PlaylistBuilder';
-
 import Scheduler from './pages/Scheduler';
-
 import Players from './pages/Players';
-
 import Ticker from './pages/Ticker';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,15 +25,21 @@ const AppRoutes: React.FC = () => {
     return (
       <Routes>
         <Route path="/login" element={<LoginForm />} />
+        {/* Any path for an unauthenticated user redirects to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
+  // This block is for authenticated users
   return (
     <Layout>
       <Routes>
+        {/* Make the root path and /login path redirect to the dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Protected Application Routes */}
         <Route
           path="/dashboard"
           element={
@@ -89,6 +88,7 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        {/* Any other unknown path for an authenticated user goes to the dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

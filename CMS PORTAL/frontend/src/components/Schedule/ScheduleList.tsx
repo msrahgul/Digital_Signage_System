@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Schedule, Playlist, Player } from '../../types';
-import { Edit, Trash2, Calendar, Clock, Monitor, Play, Pause, MapPin } from 'lucide-react';
+import { Edit, Trash2, Calendar, Clock, Monitor, Play, Pause, MapPin, List } from 'lucide-react';
 
 interface ScheduleListProps {
   schedules: Schedule[];
@@ -23,8 +23,10 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
 }) => {
   const canEdit = userRole === 'Admin' || userRole === 'Publisher';
 
-  const getPlaylistName = (playlistId: string) => {
-    return playlists.find(p => p.id === playlistId)?.name || 'Unknown';
+  const getPlaylistNames = (playlistIds: string[]) => {
+    return playlistIds
+      .map(id => playlists.find(p => p.id === id)?.name)
+      .filter(Boolean) as string[];
   };
 
   // ✅ Returns correct player + location pairs
@@ -70,7 +72,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
                 Schedule
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Playlist
+                Playlists
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Players / Locations
@@ -90,9 +92,13 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {schedules.map((schedule) => {
-              const [expanded, setExpanded] = useState(false);
+              const [playersExpanded, setPlayersExpanded] = useState(false);
+              const [playlistsExpanded, setPlaylistsExpanded] = useState(false);
               const playerData = getPlayerAndLocation(schedule.playerIds);
-              const visiblePlayers = expanded ? playerData : playerData.slice(0, 1);
+              const playlistNames = getPlaylistNames(schedule.playlistIds || [schedule.playlistId]);
+              
+              const visiblePlayers = playersExpanded ? playerData : playerData.slice(0, 1);
+              const visiblePlaylists = playlistsExpanded ? playlistNames : playlistNames.slice(0, 1);
 
               return (
                 <tr key={schedule.id} className="hover:bg-gray-50">
@@ -104,9 +110,22 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {getPlaylistName(schedule.playlistId)}
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      {visiblePlaylists.map((name, idx) => (
+                          <div key={idx} className="flex items-center space-x-2 text-sm text-gray-900">
+                              <List className="h-4 w-4 text-gray-400" />
+                              <span>{name}</span>
+                          </div>
+                      ))}
+                      {playlistNames.length > 1 && (
+                          <button
+                              onClick={() => setPlaylistsExpanded(!playlistsExpanded)}
+                              className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                          >
+                              {playlistsExpanded ? 'Show less' : `+${playlistNames.length - 1} more`}
+                          </button>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -126,10 +145,10 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
 
                       {playerData.length > 1 && (
                         <button
-                          onClick={() => setExpanded(!expanded)}
+                          onClick={() => setPlayersExpanded(!playersExpanded)}
                           className="text-xs text-blue-600 hover:text-blue-800 mt-1"
                         >
-                          {expanded ? 'Show less' : `+${playerData.length - 1} more`}
+                          {playersExpanded ? 'Show less' : `+${playerData.length - 1} more`}
                         </button>
                       )}
                     </div>
