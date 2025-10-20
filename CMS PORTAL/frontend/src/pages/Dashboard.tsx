@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import StatCard from '../components/Dashboard/StatCard';
-import { Monitor, Image, List, Calendar, Activity, TrendingUp, ArrowRight, Play, AlertTriangle } from 'lucide-react';
+import { Monitor, Image, List, Calendar, Type as ChyronIcon, AlertTriangle, ArrowRight } from 'lucide-react';
+import { User } from '../types';
 
 const BACKEND_URL = 'http://localhost:4000';
 
@@ -31,7 +32,6 @@ const Dashboard: React.FC = () => {
     offlinePlayers: 0
   });
   const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -50,12 +50,11 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchStats();
 
-    // Setup WebSocket for real-time updates
     const ws = new WebSocket('ws://localhost:4000');
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: 'cms-connect' }));
     };
-    
+
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
@@ -67,7 +66,6 @@ const Dashboard: React.FC = () => {
       }
     };
 
-    // Refresh stats every 30 seconds
     const interval = setInterval(fetchStats, 30000);
 
     return () => {
@@ -76,12 +74,16 @@ const Dashboard: React.FC = () => {
     };
   }, [fetchStats]);
 
-  const quickLinks = [
-    { name: 'Upload Media', href: '/media', icon: Image, description: 'Add new content to your library' },
-    { name: 'Create Playlist', href: '/playlists', icon: List, description: 'Build new content sequences' },
-    { name: 'Schedule Content', href: '/schedules', icon: Calendar, description: 'Assign playlists to displays' },
-    { name: 'Monitor Players', href: '/players', icon: Monitor, description: 'Check player status and health' }
+  const allQuickLinks = [
+    { name: 'Upload Media', href: '/media', icon: Image, description: 'Add new content to your library', roles: ['root', 'supervisor', 'user'] },
+    { name: 'Create Playlist', href: '/playlists', icon: List, description: 'Build new content sequences', roles: ['root', 'supervisor', 'user'] },
+    { name: 'Manage Chyron', href: '/chyron', icon: ChyronIcon, description: 'Control the scrolling text', roles: ['root', 'supervisor'] },
+    { name: 'Schedule Content', href: '/schedules', icon: Calendar, description: 'Assign playlists to displays', roles: ['root', 'supervisor'] },
+    { name: 'Monitor Players', href: '/players', icon: Monitor, description: 'Check player status and health', roles: ['root'] }
   ];
+
+  const quickLinks = allQuickLinks.filter(link => user && link.roles.includes(user.role));
+
 
   if (loading) {
     return (
@@ -93,7 +95,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-2 text-sm text-gray-700">
@@ -101,7 +102,6 @@ const Dashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Media"
@@ -133,7 +133,6 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-      {/* Alerts */}
       {stats.offlinePlayers > 0 && (
         <div className="rounded-md bg-yellow-50 p-4">
           <div className="flex">
@@ -155,7 +154,6 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Links */}
       <div>
         <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -193,7 +191,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* System Status */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-900">System Status</h2>

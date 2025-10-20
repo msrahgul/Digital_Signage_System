@@ -12,10 +12,20 @@ import PlaylistBuilder from './pages/PlaylistBuilder';
 import Scheduler from './pages/Scheduler';
 import Players from './pages/Players';
 import Chyron from './pages/Chyron';
+import { User } from './types';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+const ProtectedRoute: React.FC<{ children: React.ReactNode, roles: User['role'][] }> = ({ children, roles }) => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (roles && !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const AppRoutes: React.FC = () => {
@@ -25,25 +35,21 @@ const AppRoutes: React.FC = () => {
     return (
       <Routes>
         <Route path="/login" element={<LoginForm />} />
-        {/* Any path for an unauthenticated user redirects to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
-  // This block is for authenticated users
   return (
     <Layout>
       <Routes>
-        {/* Make the root path and /login path redirect to the dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
 
-        {/* Protected Application Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['root', 'supervisor', 'user']}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -51,15 +57,23 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/media"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['root', 'supervisor', 'user']}>
               <MediaLibrary />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chyron"
+          element={
+            <ProtectedRoute roles={['root', 'supervisor']}>
+              <Chyron />
             </ProtectedRoute>
           }
         />
         <Route
           path="/playlists"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['root', 'supervisor', 'user']}>
               <PlaylistBuilder />
             </ProtectedRoute>
           }
@@ -67,7 +81,7 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/schedules"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['root', 'supervisor']}>
               <Scheduler />
             </ProtectedRoute>
           }
@@ -75,20 +89,11 @@ const AppRoutes: React.FC = () => {
         <Route
           path="/players"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['root']}>
               <Players />
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/chyron"
-          element={
-            <ProtectedRoute>
-              <Chyron />
-            </ProtectedRoute>
-          }
-        />
-        {/* Any other unknown path for an authenticated user goes to the dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>
