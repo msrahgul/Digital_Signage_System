@@ -2,7 +2,7 @@
 export interface User {
   id: string;
   username: string;
-  role: 'Admin' | 'Publisher' | 'Viewer';
+  role: 'root' | 'supervisor' | 'user';
   email: string;
   lastLogin?: string;
 }
@@ -26,7 +26,7 @@ export interface Playlist {
   id: string;
   name: string;
   description: string;
-  mediaItems: any[]; 
+  mediaItems: any[];
   totalDuration: number;
   createdAt: string;
   createdBy: string;
@@ -46,9 +46,9 @@ export interface Schedule {
   isActive: boolean;
   createdAt: string;
   createdBy: string;
-  priority: number; 
+  priority: number;
   executionMode: 'sequential' | 'replace';
-  tickerText?: string;
+  chyronText?: string;
 }
 
 export interface TimeSlot {

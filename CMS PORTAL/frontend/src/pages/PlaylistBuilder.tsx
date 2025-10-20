@@ -22,12 +22,12 @@ const PlaylistBuilder: React.FC = () => {
         fetch(`${BACKEND_URL}/playlists`),
         fetch(`${BACKEND_URL}/media`)
       ]);
-      
+
       if (playlistsRes.ok) {
         const playlistsData = await playlistsRes.json();
         setPlaylists(playlistsData);
       }
-      
+
       if (mediaRes.ok) {
         const mediaData = await mediaRes.json();
         setMedia(mediaData);
@@ -57,7 +57,7 @@ const PlaylistBuilder: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        
+
         if (response.ok) {
           const updatedPlaylist = await response.json();
           setPlaylists(playlists.map(p => p.id === editingPlaylist.id ? updatedPlaylist : p));
@@ -69,13 +69,13 @@ const PlaylistBuilder: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        
+
         if (response.ok) {
           const newPlaylist = await response.json();
           setPlaylists([newPlaylist, ...playlists]);
         }
       }
-      
+
       setShowForm(false);
       setEditingPlaylist(null);
     } catch (error) {
@@ -93,7 +93,7 @@ const PlaylistBuilder: React.FC = () => {
       const response = await fetch(`${BACKEND_URL}/playlists/${id}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         setPlaylists(playlists.filter(p => p.id !== id));
       }
@@ -108,8 +108,8 @@ const PlaylistBuilder: React.FC = () => {
       name: `${playlist.name} (Copy)`,
       createdBy: user?.username || 'Unknown'
     };
-    
-    
+
+
     await handleSavePlaylist(duplicatedData);
   };
 
@@ -118,7 +118,8 @@ const PlaylistBuilder: React.FC = () => {
     setEditingPlaylist(null);
   };
 
-  const canCreate = user?.role === 'Admin' || user?.role === 'Publisher';
+  const canCreate = user?.role === 'root' || user?.role === 'supervisor' || user?.role === 'user';
+
 
   if (loading) {
     return <div>Loading playlists...</div>;
@@ -149,7 +150,7 @@ const PlaylistBuilder: React.FC = () => {
           onEdit={handleEditPlaylist}
           onDelete={handleDeletePlaylist}
           onDuplicate={handleDuplicatePlaylist}
-          userRole={user?.role || 'Viewer'}
+          user={user}
         />
       ) : (
         <PlaylistForm

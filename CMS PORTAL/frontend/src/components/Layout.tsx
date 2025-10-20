@@ -11,7 +11,7 @@ import {
   X,
   LogOut,
   User,
-  Type as TickerIcon
+  Type as ChyronIcon
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -25,15 +25,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Media Library', href: '/media', icon: Image },
-    { name: 'Ticker', href: '/ticker', icon: TickerIcon },
-    { name: 'Playlists', href: '/playlists', icon: List },
-    { name: 'Schedules', href: '/schedules', icon: Calendar },
-    { name: 'Players', href: '/players', icon: Monitor },
+    { name: 'Dashboard', href: '/dashboard', icon: Home, roles: ['root', 'supervisor', 'user'] },
+    { name: 'Media Library', href: '/media', icon: Image, roles: ['root', 'supervisor', 'user'] },
+    { name: 'Chyron', href: '/chyron', icon: ChyronIcon, roles: ['root', 'supervisor'] },
+    { name: 'Playlists', href: '/playlists', icon: List, roles: ['root', 'supervisor', 'user'] },
+    { name: 'Schedules', href: '/schedules', icon: Calendar, roles: ['root', 'supervisor'] },
+    { name: 'Players', href: '/players', icon: Monitor, roles: ['root'] },
   ];
 
   const isCurrentPath = (path: string) => location.pathname === path;
+
+  const filteredNavigation = navigation.filter(item => user && item.roles.includes(user.role));
 
   return (
     <div className="h-screen flex bg-slate-50">
@@ -63,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <nav className="mt-8 px-4 space-y-2">
-          {navigation.map((item) => {
+          {filteredNavigation.map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -110,9 +112,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <span className="text-sm font-medium text-gray-700">{user?.username}</span>
                   <span className={`
                     px-2 py-1 text-xs font-medium rounded-full
-                    ${user?.role === 'Admin' ? 'bg-purple-100 text-purple-800' : ''}
-                    ${user?.role === 'Publisher' ? 'bg-blue-100 text-blue-800' : ''}
-                    ${user?.role === 'Viewer' ? 'bg-gray-100 text-gray-800' : ''}
+                    ${user?.role === 'root' ? 'bg-purple-100 text-purple-800' : ''}
+                    ${user?.role === 'supervisor' ? 'bg-blue-100 text-blue-800' : ''}
+                    ${user?.role === 'user' ? 'bg-gray-100 text-gray-800' : ''}
                   `}>
                     {user?.role}
                   </span>

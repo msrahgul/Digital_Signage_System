@@ -11,7 +11,7 @@ import MediaLibrary from './pages/MediaLibrary';
 import PlaylistBuilder from './pages/PlaylistBuilder';
 import Scheduler from './pages/Scheduler';
 import Players from './pages/Players';
-import Ticker from './pages/Ticker';
+import Chyron from './pages/Chyron';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -81,10 +81,10 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route
-          path="/ticker"
+          path="/chyron"
           element={
             <ProtectedRoute>
-              <Ticker />
+              <Chyron />
             </ProtectedRoute>
           }
         />

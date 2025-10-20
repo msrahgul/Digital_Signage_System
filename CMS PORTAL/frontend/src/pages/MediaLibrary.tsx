@@ -123,7 +123,7 @@ const MediaLibrary: React.FC = () => {
   };
 
   const filteredMedia = media.filter((item) => {
-    if (item.groupId) { 
+    if (item.groupId) {
       return false;
     }
     const matchesSearch =
@@ -135,7 +135,7 @@ const MediaLibrary: React.FC = () => {
     return matchesSearch && matchesType;
   });
 
-  const canUpload = user?.role === 'Admin' || user?.role === 'Publisher';
+  const canUpload = user?.role === 'root' || user?.role === 'supervisor' || user?.role === 'user';
 
   return (
     <div className="p-6">
@@ -176,6 +176,7 @@ const MediaLibrary: React.FC = () => {
         onDelete={requestDelete}
         onPreview={handlePreview}
         canEdit={canUpload}
+        currentUser={user}
       />
 
       {showUploadModal && (

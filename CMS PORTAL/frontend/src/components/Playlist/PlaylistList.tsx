@@ -1,6 +1,6 @@
 import React from 'react';
-import { Playlist, MediaItem } from '../../types';
-import { Edit, Trash2, Copy, Play, Clock, Calendar, User } from 'lucide-react';
+import { Playlist, MediaItem, User } from '../../types';
+import { Edit, Trash2, Copy, Play, Clock, Calendar, User as UserIcon } from 'lucide-react';
 
 interface PlaylistListProps {
   playlists: Playlist[];
@@ -8,18 +8,39 @@ interface PlaylistListProps {
   onEdit: (playlist: Playlist) => void;
   onDelete: (id: string) => void;
   onDuplicate: (playlist: Playlist) => void;
-  userRole: string;
+  user: User | null;
 }
 
-const PlaylistList: React.FC<PlaylistListProps> = ({ 
-  playlists, 
-  media, 
-  onEdit, 
-  onDelete, 
-  onDuplicate, 
-  userRole 
+const PlaylistList: React.FC<PlaylistListProps> = ({
+  playlists,
+  media,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  user
 }) => {
-  const canEdit = userRole === 'Admin' || userRole === 'Publisher';
+  const canEdit = (playlist: Playlist) => {
+    if (!user) return false;
+    if (user.role === 'root' || user.role === 'supervisor') return true;
+    if (user.role === 'user') {
+      return playlist.createdBy === user.username;
+    }
+    return false;
+  };
+
+  const canDelete = (playlist: Playlist) => {
+    if (!user) return false;
+    if (user.role === 'root') return true;
+    if (user.role === 'supervisor') {
+      const playlistCreatedBy = playlists.find(p => p.id === playlist.id)?.createdBy;
+      const users = ['user1', 'user2'];
+      return users.includes(playlistCreatedBy || '');
+    }
+    if (user.role === 'user') {
+      return playlist.createdBy === user.username;
+    }
+    return false;
+  };
 
   const getMediaNames = (mediaIds: string[]) => {
     return mediaIds
@@ -77,7 +98,7 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
                 {playlist.mediaItems.length} item{playlist.mediaItems.length !== 1 ? 's' : ''}
               </div>
               <div className="flex items-center text-sm text-gray-500">
-                <User className="h-4 w-4 mr-2" />
+                <UserIcon className="h-4 w-4 mr-2" />
                 Created by {playlist.createdBy}
               </div>
               <div className="flex items-center text-sm text-gray-500">
@@ -87,15 +108,15 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
             </div>
           </div>
 
-          {canEdit && (
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-2">
-              <button
-                onClick={() => onDuplicate(playlist)}
-                className="text-gray-600 hover:text-gray-800 p-1 rounded"
-                title="Duplicate"
-              >
-                <Copy className="h-4 w-4" />
-              </button>
+          <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-2">
+            <button
+              onClick={() => onDuplicate(playlist)}
+              className="text-gray-600 hover:text-gray-800 p-1 rounded"
+              title="Duplicate"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+            {canEdit(playlist) && (
               <button
                 onClick={() => onEdit(playlist)}
                 className="text-blue-600 hover:text-blue-800 p-1 rounded"
@@ -103,6 +124,8 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
               >
                 <Edit className="h-4 w-4" />
               </button>
+            )}
+            {canDelete(playlist) && (
               <button
                 onClick={() => onDelete(playlist.id)}
                 className="text-red-600 hover:text-red-800 p-1 rounded"
@@ -110,8 +133,8 @@ const PlaylistList: React.FC<PlaylistListProps> = ({
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       ))}
     </div>

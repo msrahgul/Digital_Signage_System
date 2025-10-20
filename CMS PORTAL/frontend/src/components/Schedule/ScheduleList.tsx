@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Schedule, Playlist, Player } from '../../types';
+import { Schedule, Playlist, Player, User } from '../../types';
 import { Edit, Trash2, Calendar, Clock, Monitor, Play, Pause, MapPin, List } from 'lucide-react';
 
 interface ScheduleListProps {
@@ -9,19 +9,31 @@ interface ScheduleListProps {
   onEdit: (schedule: Schedule) => void;
   onDelete: (id: string) => void;
   onToggle: (id: string) => void;
-  userRole: string;
+  user: User | null;
 }
 
-const ScheduleList: React.FC<ScheduleListProps> = ({ 
-  schedules, 
-  playlists, 
-  players, 
-  onEdit, 
-  onDelete, 
-  onToggle, 
-  userRole 
+const ScheduleList: React.FC<ScheduleListProps> = ({
+  schedules,
+  playlists,
+  players,
+  onEdit,
+  onDelete,
+  onToggle,
+  user
 }) => {
-  const canEdit = userRole === 'Admin' || userRole === 'Publisher';
+  const canEdit = (schedule: Schedule) => {
+    if (!user) return false;
+    return user.role === 'root' || user.role === 'supervisor';
+  };
+
+  const canDelete = (schedule: Schedule) => {
+    if (!user) return false;
+    if (user.role === 'root') return true;
+    if (user.role === 'supervisor') {
+      return schedule.createdBy !== 'root';
+    }
+    return false;
+  };
 
   const getPlaylistNames = (playlistIds: string[]) => {
     return playlistIds
@@ -29,7 +41,6 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
       .filter(Boolean) as string[];
   };
 
-  // ✅ Returns correct player + location pairs
   const getPlayerAndLocation = (playerIds: string[]) => {
     return playerIds
       .map(id => {
@@ -83,7 +94,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              {canEdit && (
+              {(user?.role === 'root' || user?.role === 'supervisor') && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -96,7 +107,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
               const [playlistsExpanded, setPlaylistsExpanded] = useState(false);
               const playerData = getPlayerAndLocation(schedule.playerIds);
               const playlistNames = getPlaylistNames(schedule.playlistIds || [schedule.playlistId]);
-              
+
               const visiblePlayers = playersExpanded ? playerData : playerData.slice(0, 1);
               const visiblePlaylists = playlistsExpanded ? playlistNames : playlistNames.slice(0, 1);
 
@@ -170,35 +181,39 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
-                      onClick={() => canEdit && onToggle(schedule.id)}
-                      disabled={!canEdit}
+                      onClick={() => (user?.role === 'root' || user?.role === 'supervisor') && onToggle(schedule.id)}
+                      disabled={!(user?.role === 'root' || user?.role === 'supervisor')}
                       className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         schedule.isActive
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
-                      } ${canEdit ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
+                      } ${(user?.role === 'root' || user?.role === 'supervisor') ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'}`}
                     >
                       {schedule.isActive ? <Play className="h-3 w-3 mr-1" /> : <Pause className="h-3 w-3 mr-1" />}
                       {schedule.isActive ? 'Active' : 'Inactive'}
                     </button>
                   </td>
-                  {canEdit && (
+                  {(user?.role === 'root' || user?.role === 'supervisor') && (
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => onEdit(schedule)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(schedule.id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {canEdit(schedule) && (
+                          <button
+                            onClick={() => onEdit(schedule)}
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canDelete(schedule) && (
+                          <button
+                            onClick={() => onDelete(schedule.id)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}

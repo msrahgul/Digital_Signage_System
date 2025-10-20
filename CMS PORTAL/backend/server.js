@@ -356,37 +356,38 @@ async function savePlayers(data) {
   broadcastToCMS({ type: 'players-updated' });
 }
 
-// ENHANCED Settings with full ticker support
+// ENHANCED Settings with full chyron support
 async function loadSettings() {
-  return loadJSON(SETTINGS_JSON_PATH, { 
-    tickerText: "",
-    tickers: [],
-    tickerEnabled: true,
-    tickerSpeed: 2
+  return loadJSON(SETTINGS_JSON_PATH, {
+    chyronText: "",
+    chyrons: [],
+    chyronEnabled: true,
+    chyronSpeed: 2
   });
 }
 
 async function saveSettings(data) {
   await saveJSON(SETTINGS_JSON_PATH, data);
-  
-  // IMMEDIATELY notify all players with specific ticker update
-  console.log('🎯 TICKER SETTINGS UPDATED - Broadcasting to all players...');
-  
-  // Send specific ticker update message
-  const tickerUpdateMessage = {
-    type: 'ticker-updated',
-    tickerText: data.tickerText || '',
-    tickerEnabled: data.tickerEnabled !== undefined ? data.tickerEnabled : true,
-    tickerSpeed: data.tickerSpeed || 2,
+
+  // IMMEDIATELY notify all players with specific chyron update
+  console.log('🎯 CHYRON SETTINGS UPDATED - Broadcasting to all players...');
+
+  // Send specific chyron update message
+  const chyronUpdateMessage = {
+    type: 'chyron-updated',
+    chyronText: data.chyronText || '',
+    chyronEnabled: data.chyronEnabled !== undefined ? data.chyronEnabled : true,
+    chyronSpeed: data.chyronSpeed || 2,
     timestamp: new Date().toISOString()
   };
-  
-  broadcastToAllPlayers(tickerUpdateMessage);
-  broadcastToCMS({ type: 'ticker-settings-updated', data: tickerUpdateMessage });
-  
+
+  broadcastToAllPlayers(chyronUpdateMessage);
+  broadcastToCMS({ type: 'chyron-settings-updated', data: chyronUpdateMessage });
+
   // Also send general content change notification
   notifyPlayersOfContentChange();
 }
+
 
 // Player token management
 async function loadPlayerTokens() {
@@ -488,7 +489,7 @@ function getISTDateTime() {
 // Serve uploaded files statically
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ENHANCED SETTINGS ENDPOINTS - FULL TICKER SUPPORT
+// ENHANCED SETTINGS ENDPOINTS - FULL CHYRON SUPPORT
 app.get('/settings', async (req, res) => {
   try {
     const settings = await loadSettings();
@@ -503,12 +504,12 @@ app.get('/settings', async (req, res) => {
 app.post('/settings', async (req, res) => {
   try {
     console.log('💾 Saving settings:', req.body);
-    
+
     const currentSettings = await loadSettings();
     const newSettings = { ...currentSettings, ...req.body };
-    
+
     await saveSettings(newSettings);
-    
+
     console.log('✅ Settings saved and broadcasted to all players');
     res.json(newSettings);
   } catch (error) {
@@ -516,6 +517,7 @@ app.post('/settings', async (req, res) => {
     res.status(500).json({ error: 'Failed to save settings' });
   }
 });
+
 
 // MEDIA ENDPOINTS
 app.get('/media', async (req, res) => {
@@ -904,7 +906,7 @@ app.post('/players/:id/command', async (req, res) => {
 app.post('/api/players/:playerId/state', (req, res) => {
   const { playerId } = req.params;
   const state = req.body;
-  
+
   // FIX: Construct the absolute URL for media robustly
   if (state.mediaUrl && !state.mediaUrl.startsWith('http')) {
       const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -915,13 +917,13 @@ app.post('/api/players/:playerId/state', (req, res) => {
 
   state.timestamp = new Date().toISOString();
   playerStates.set(playerId, state);
-  
+
   // SSE push to subscribers
   const sseConnection = sseConnections.get(playerId);
   if (sseConnection) {
     sseConnection.res.write(`data: ${JSON.stringify(state)}\n\n`);
   }
-  
+
   res.sendStatus(200);
 });
 
@@ -952,7 +954,7 @@ app.get('/api/players/:playerId/preview', (req, res) => {
   }
 });
 
-// ENHANCED Get player schedule - INCLUDES TICKER SETTINGS
+// ENHANCED Get player schedule - INCLUDES CHYRON SETTINGS
 app.get('/player-schedule/:playerId', async (req, res) => {
   try {
     const playerId = req.params.playerId;
@@ -1028,23 +1030,24 @@ app.get('/player-schedule/:playerId', async (req, res) => {
       await savePlayers(players);
     }
 
-    // ENHANCED: Include full ticker settings
+    // ENHANCED: Include full chyron settings
     const response = {
       playerId,
       currentSchedule: activeSchedules[0] || null,
       playlists: activePlaylists,
       media: playlistMedia,
-      tickerText: settings.tickerText || "",
-      tickerEnabled: settings.tickerEnabled !== undefined ? settings.tickerEnabled : true,
-      tickerSpeed: settings.tickerSpeed || 2,
+      chyronText: settings.chyronText || "",
+      chyronEnabled: settings.chyronEnabled !== undefined ? settings.chyronEnabled : true,
+      chyronSpeed: settings.chyronSpeed || 2,
       serverTime: istDate.toISOString(),
-      contentHash: JSON.stringify(playlistMedia.length + (settings.tickerText || '').length + (settings.tickerEnabled ? 1 : 0) + (settings.tickerSpeed || 2))
+      contentHash: JSON.stringify(playlistMedia.length + (settings.chyronText || '').length + (settings.chyronEnabled ? 1 : 0) + (settings.chyronSpeed || 2))
     };
+
 
     console.log(`📤 Sending schedule to ${playerId}:`, {
       media: playlistMedia.length,
-      ticker: settings.tickerText ? 'YES' : 'NO',
-      enabled: response.tickerEnabled
+      chyron: settings.chyronText ? 'YES' : 'NO',
+      enabled: response.chyronEnabled
     });
 
     res.json(response);
@@ -1054,6 +1057,7 @@ app.get('/player-schedule/:playerId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 // Stats endpoint
 app.get('/stats', async (req, res) => {
@@ -1106,17 +1110,18 @@ wss.on('connection', (ws, req) => {
               type: 'connection-confirmed',
               playerId: message.playerId
             }));
-            
-            // Send current ticker settings immediately upon connection
+
+            // Send current chyron settings immediately upon connection
             const settings = await loadSettings();
             ws.send(JSON.stringify({
-              type: 'ticker-updated',
-              tickerText: settings.tickerText || '',
-              tickerEnabled: settings.tickerEnabled !== undefined ? settings.tickerEnabled : true,
-              tickerSpeed: settings.tickerSpeed || 2,
+              type: 'chyron-updated',
+              chyronText: settings.chyronText || '',
+              chyronEnabled: settings.chyronEnabled !== undefined ? settings.chyronEnabled : true,
+              chyronSpeed: settings.chyronSpeed || 2,
               timestamp: new Date().toISOString()
             }));
-            
+
+
             console.log('✅ Player connected:', message.playerId);
           } else {
             ws.send(JSON.stringify({
@@ -1171,7 +1176,7 @@ wss.on('connection', (ws, req) => {
         players[playerIndex].status = 'offline';
         players[playerIndex].lastSync = new Date().toISOString();
         await savePlayers(players);
-        
+
         const offlineState = { status: 'offline', timestamp: new Date().toISOString() };
         playerStates.set(playerId, offlineState);
 
@@ -1179,7 +1184,7 @@ wss.on('connection', (ws, req) => {
         if (sseConnection) {
             sseConnection.res.write(`data: ${JSON.stringify(offlineState)}\n\n`);
         }
-        
+
         broadcastToCMS({ type: 'player-disconnected', player: players[playerIndex] });
       }
 

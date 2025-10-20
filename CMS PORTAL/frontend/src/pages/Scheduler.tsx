@@ -150,7 +150,7 @@ const Scheduler: React.FC = () => {
     setEditingSchedule(null);
   };
 
-  const canCreate = user?.role === 'Admin' || user?.role === 'Publisher';
+  const canCreate = user?.role === 'root' || user?.role === 'supervisor';
 
   if (loading) {
     return <div>Loading schedules...</div>;
@@ -184,7 +184,7 @@ const Scheduler: React.FC = () => {
           onEdit={handleEditSchedule}
           onDelete={handleDeleteSchedule}
           onToggle={handleToggleSchedule}
-          userRole={user?.role || 'Viewer'}
+          user={user}
         />
       ) : (
         <ScheduleForm
@@ -193,7 +193,7 @@ const Scheduler: React.FC = () => {
           players={players}
           onSave={handleSaveSchedule}
           onCancel={handleCloseForm}
-          locations={locations}   // <-- pass location groups into form
+          locations={locations}
         />
       )}
     </div>

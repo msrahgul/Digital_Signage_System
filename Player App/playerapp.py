@@ -20,7 +20,7 @@ import sys
 # Configuration
 # IMPORTANT: Replace "YOUR_SERVER_IP" with the actual IP address of your backend server.
 # For example: "http://192.168.1.100:4000/"
-BACKEND_URL = "http://10.111.76.220:4000/"
+BACKEND_URL = "http://10.52.54.220:4000/"
 WS_URL = f"ws://{BACKEND_URL.split('//')[1].split(':')[0]}:4000"
 
 CACHE_DIR = "media_cache"
@@ -69,41 +69,36 @@ class UltraPlayerManager:
         """Initialize VLC with optimal settings and a permanent logo overlay"""
         try:
             logo_path = os.path.abspath(LOGO_PATH)
-            if not os.path.exists(logo_path):
-                print(f"⚠️ Logo file not found at {logo_path}, video overlay will be disabled.")
-                vlc_args = [
-                    '--intf', 'dummy',
-                    '--no-video-title-show',
-                    '--quiet',
-                    '--avcodec-hw=any',
-                    '--network-caching=300',
-                    '--file-caching=300'
-                ]
-            else:
-                # Arguments to add a persistent, transparent logo to all videos
-                vlc_args = [
-                    '--intf', 'dummy',
-                    '--no-video-title-show',
-                    '--quiet',
-                    '--avcodec-hw=any',
-                    '--network-caching=300',
-                    '--file-caching=300',
-                    '--logo-file=' + logo_path,  # Path to your logo
+            vlc_args = [
+                '--intf', 'dummy',
+                '--no-video-title-show',
+                '--quiet',
+                '--avcodec-hw=any',
+                '--network-caching=1500',
+                '--file-caching=1500'
+            ]
+
+            if os.path.exists(logo_path):
+                print("✅ Logo file found. Enabling video overlay.")
+                vlc_args.extend([
+                    '--logo-file=' + logo_path,
                     '--logo-position=10',        # 10 = Top-Right
                     '--logo-opacity=255',        # 255 = Fully opaque
                     '--logo-x=20',               # Padding from the right edge
                     '--logo-y=20'                # Padding from the top edge
-                ]
+                ])
+            else:
+                print(f"⚠️ Logo file not found at {logo_path}, video overlay will be disabled.")
 
             self.vlc_instance = vlc.Instance(vlc_args)
             if self.vlc_instance:
-                print("✅ VLC initialized successfully with logo overlay for videos")
+                print("✅ VLC initialized successfully.")
             else:
-                print("❌ VLC initialization failed")
-
+                print("❌ VLC initialization failed.")
         except Exception as e:
             print(f"VLC initialization error: {e}")
             self.vlc_instance = None
+
     
     def load_config(self):
         try:
@@ -135,47 +130,15 @@ class UltraPlayerManager:
         }
 
         try:
-            if platform.system() == "Linux":
-                try:
-                    result = subprocess.run(['xrandr'], capture_output=True, text=True, timeout=5)
-                    if result.returncode == 0:
-                        for line in result.stdout.split('\n'):
-                            if ' connected ' in line and 'x' in line:
-                                try:
-                                    parts = line.split()
-                                    for part in parts:
-                                        if 'x' in part and '+' not in part:
-                                            resolution = part.split('+')[0]
-                                            if 'x' in resolution:
-                                                width, height = map(int, resolution.split('x'))
-                                                device_info['screen_width'] = width
-                                                device_info['screen_height'] = height
-                                                break
-                                    if device_info['screen_width'] != 1920:
-                                        break
-                                except:
-                                    continue
-                except:
-                    pass
-            
-            elif platform.system() == "Windows":
-                try:
-                    # Using a more robust way to get screen size on Windows
-                    from win32api import GetSystemMetrics
-                    device_info['screen_width'] = GetSystemMetrics(0)
-                    device_info['screen_height'] = GetSystemMetrics(1)
-                except ImportError:
-                    # Fallback to tkinter if pywin32 is not installed
-                    try:
-                        root = tk.Tk()
-                        device_info['screen_width'] = root.winfo_screenwidth()
-                        device_info['screen_height'] = root.winfo_screenheight()
-                        root.destroy()
-                    except:
-                        pass
-
+            # Use Tkinter for reliable, cross-platform screen size detection
+            root = tk.Tk()
+            root.withdraw() # Hide the main window
+            device_info['screen_width'] = root.winfo_screenwidth()
+            device_info['screen_height'] = root.winfo_screenheight()
+            root.destroy()
         except Exception as e:
-            print(f"Could not detect display info: {e}")
+            print(f"Could not detect display info using Tkinter: {e}")
+
 
         with open(DEVICE_INFO_FILE, 'w') as f:
             json.dump(device_info, f, indent=2)
@@ -373,7 +336,6 @@ class UltraPlayerManager:
             return
 
         media_type = media_item.get('type') if media_item else 'none'
-        # FIX: Send only the relative path to the server
         relative_url = media_item.get('url', '') if media_item else ''
 
         state = {
@@ -420,7 +382,6 @@ class UltraDisplayApp:
         
         self.is_destroying = False
 
-        # --- NEW: Define a constant for the ticker height ---
         self.TICKER_HEIGHT = 60
         
         self.display_frame = tk.Frame(self.root, bg='black', highlightthickness=0)
@@ -429,14 +390,10 @@ class UltraDisplayApp:
         self.content_label = tk.Label(self.display_frame, bg='black', highlightthickness=0)
         self.video_frame = tk.Frame(self.display_frame, bg='black', highlightthickness=0)
         
-        # REMOVED OLD LOGO WIDGETS
-        
-        # --- MODIFIED: Use the ticker height constant ---
         self.ticker_frame = tk.Frame(self.root, bg='black', height=self.TICKER_HEIGHT, highlightthickness=0)
         self.ticker_frame.pack(side='bottom', fill='x')
         self.ticker_frame.pack_propagate(False)
         
-        # --- MODIFIED: Use the ticker height constant ---
         self.ticker_canvas = tk.Canvas(self.ticker_frame, bg='black', highlightthickness=0, height=self.TICKER_HEIGHT)
         self.ticker_canvas.pack(fill='both', expand=True)
         
@@ -447,12 +404,14 @@ class UltraDisplayApp:
         self.last_schedule_check = 0
         self.last_heartbeat = 0
         
-        self.ticker_job = None
-        self.ticker_x = self.screen_width
+        self.image_cache = {}
+        self.image_preload_thread = None
+        
+        # Ticker Threading
+        self.ticker_thread = None
+        self.ticker_stop_event = threading.Event()
+        self.ticker_coords_queue = queue.Queue()
         self.ticker_text_id = None
-        self.ticker_text_width = 0
-        self.ticker_running = False
-        self.ticker_bg_photo = None
         
         self.root.bind('<Escape>', self.on_escape)
         self.root.bind('<KeyPress>', self.on_key_press)
@@ -463,7 +422,6 @@ class UltraDisplayApp:
         print(f"🚀 Ultra Player initialized: {self.screen_width}x{self.screen_height}")
     
     def create_default_overlays(self):
-        """Create Ticker by default - ALWAYS VISIBLE"""
         print("🎨 Creating default overlays: Ticker")
         self.start_default_ticker()
     
@@ -474,9 +432,8 @@ class UltraDisplayApp:
         except Exception as e:
             print(f"Error creating translucent background: {e}")
             return None
-    
+
     def ensure_overlays_visible(self):
-        """Ensure ticker is ALWAYS visible on top"""
         try:
             if not self.ticker_frame.winfo_viewable():
                 self.ticker_frame.pack(side='bottom', fill='x')
@@ -572,6 +529,9 @@ class UltraDisplayApp:
         local_media = []
         for media_item in media_list:
             if media_item.get('type') in ['image', 'video']:
+                if 'h265_url' in media_item and media_item['h265_url']:
+                    media_item['url'] = media_item['h265_url']
+                
                 local_path = self.download_media_file(media_item)
                 if local_path:
                     media_item['local_path'] = local_path
@@ -579,70 +539,81 @@ class UltraDisplayApp:
             else:
                 local_media.append(media_item)
         return local_media
+        
+    def preload_images(self, media_list):
+        def _preload():
+            for media_item in media_list:
+                if self.is_destroying:
+                    break
+                if media_item.get('type') == 'image' and media_item.get('local_path') not in self.image_cache:
+                    try:
+                        self.process_image(media_item)
+                    except Exception as e:
+                        print(f"Error preloading image {media_item.get('name')}: {e}")
+        
+        if self.image_preload_thread and self.image_preload_thread.is_alive():
+            self.image_preload_thread.join()
+            
+        self.image_preload_thread = threading.Thread(target=_preload)
+        self.image_preload_thread.daemon = True
+        self.image_preload_thread.start()
+
+    def process_image(self, media_item):
+        image_path = media_item.get('local_path')
+        if not image_path or not os.path.exists(image_path):
+            return None
+
+        content_width = self.screen_width
+        content_height = self.screen_height - self.TICKER_HEIGHT
+
+        with Image.open(image_path) as img:
+            img = img.convert('RGB')
+            img_ratio = img.width / img.height
+            content_ratio = content_width / content_height
+            if img_ratio > content_ratio:
+                new_width = content_width
+                new_height = int(content_width / img_ratio)
+            else:
+                new_height = content_height
+                new_width = int(content_height * img_ratio)
+            
+            img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            final_image = Image.new('RGB', (content_width, content_height), 'black')
+            paste_x = (content_width - new_width) // 2
+            paste_y = (content_height - new_height) // 2
+            final_image.paste(img_resized, (paste_x, paste_y))
+            
+            if self.player_manager.logo:
+                logo = self.player_manager.logo
+                logo_x = content_width - logo.width - 20
+                logo_y = 20
+                final_image.paste(logo, (logo_x, logo_y), mask=logo)
+            
+            photo = ImageTk.PhotoImage(final_image)
+            self.image_cache[image_path] = photo
+            return photo
     
     def display_image(self, media_item):
-        """Display image with proper screen fitting and a burned-in logo"""
-        try:
-            image_path = media_item.get('local_path')
-            if not image_path or not os.path.exists(image_path):
-                return False
-
-            # --- FIX: Calculate content area dimensions using a reliable constant ---
-            content_width = self.screen_width
-            content_height = self.screen_height - self.TICKER_HEIGHT
-            # --- END FIX ---
-
-            with Image.open(image_path) as img:
-                img = img.convert('RGB')
-
-                # --- FIX: Use content area dimensions for scaling the image ---
-                img_ratio = img.width / img.height
-                content_ratio = content_width / content_height
-                if img_ratio > content_ratio:
-                    new_width = content_width
-                    new_height = int(content_width / img_ratio)
-                else:
-                    new_height = content_height
-                    new_width = int(content_height * img_ratio)
-                
-                img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                
-                # --- FIX: Create the background image using content area dimensions ---
-                final_image = Image.new('RGB', (content_width, content_height), 'black')
-                paste_x = (content_width - new_width) // 2
-                paste_y = (content_height - new_height) // 2
-                final_image.paste(img_resized, (paste_x, paste_y))
-                
-                if self.player_manager.logo:
-                    logo = self.player_manager.logo
-                    # --- FIX: Position logo relative to the smaller content area ---
-                    logo_x = content_width - logo.width - 20
-                    logo_y = 20
-                    final_image.paste(logo, (logo_x, logo_y), mask=logo)
-                
-                photo = ImageTk.PhotoImage(final_image)
-                
-                self.video_frame.pack_forget()
-                self.content_label.configure(image=photo, text="")
-                self.content_label.image = photo
-                self.content_label.pack(fill='both', expand=True)
-                
-                self.root.after(50, self.ensure_overlays_visible)
-                return True
-                
-        except Exception as e:
-            print(f"Error displaying image: {e}")
-            return False
+        image_path = media_item.get('local_path')
+        photo = self.image_cache.get(image_path)
+        
+        if not photo:
+            photo = self.process_image(media_item)
+        
+        if photo:
+            self.video_frame.pack_forget()
+            self.content_label.configure(image=photo, text="")
+            self.content_label.image = photo
+            self.content_label.pack(fill='both', expand=True)
+            self.root.after(50, self.ensure_overlays_visible)
+            return True
+        return False
     
     def display_text(self, text):
-        """Display text with proper formatting and a burned-in logo"""
         try:
-            # --- FIX: Calculate content area dimensions using a reliable constant ---
             content_width = self.screen_width
             content_height = self.screen_height - self.TICKER_HEIGHT
-            # --- END FIX ---
 
-            # --- FIX: Create the background image using content area dimensions ---
             final_image = Image.new('RGB', (content_width, content_height), 'black')
             draw = ImageDraw.Draw(final_image)
             
@@ -653,7 +624,6 @@ class UltraDisplayApp:
             ]
             
             try:
-                # --- FIX: Base font size on the content area's height ---
                 font_size = max(24, content_height // 25)
                 font = None
                 for font_path in font_paths:
@@ -678,7 +648,6 @@ class UltraDisplayApp:
                 except:
                     text_width, _ = draw.textsize(test_line, font=font)
                 
-                # --- FIX: Wrap text based on the content area's width ---
                 if text_width < content_width * 0.9:
                     current_line = test_line
                 else:
@@ -689,7 +658,6 @@ class UltraDisplayApp:
             
             line_height = font_size + 10
             total_height = len(lines) * line_height
-            # --- FIX: Center text vertically within the content area ---
             y = (content_height - total_height) / 2
             
             for line in lines:
@@ -704,7 +672,6 @@ class UltraDisplayApp:
             
             if self.player_manager.logo:
                 logo = self.player_manager.logo
-                # --- FIX: Position logo relative to the smaller content area ---
                 logo_x = content_width - logo.width - 20
                 logo_y = 20
                 final_image.paste(logo, (logo_x, logo_y), mask=logo)
@@ -773,91 +740,81 @@ class UltraDisplayApp:
             print(f"Error playing video: {e}")
             return False
     
+    def _ticker_thread_func(self):
+        """The function that runs in a separate thread to calculate ticker coordinates."""
+        try:
+            ticker_text = self.player_manager.ticker_text
+            font_size = max(16, int(self.screen_height * 0.03))
+            
+            # This is a bit of a hack to get text width without a canvas in a thread
+            text_width = len(ticker_text) * (font_size // 2)
+
+            x_pos = self.screen_width + 50
+            
+            while not self.ticker_stop_event.is_set():
+                speed = max(1, int(self.player_manager.ticker_speed))
+                x_pos -= speed
+                
+                if x_pos <= -(text_width + 100):
+                    x_pos = self.screen_width + 50
+                
+                self.ticker_coords_queue.put(x_pos)
+                time.sleep(0.016) # ~60 FPS
+        except Exception as e:
+            print(f"Error in ticker thread: {e}")
+
+    def _update_ticker_canvas(self):
+        """Safely updates the ticker canvas from the main thread."""
+        try:
+            while not self.ticker_coords_queue.empty():
+                x_pos = self.ticker_coords_queue.get_nowait()
+                if self.ticker_text_id:
+                    self.ticker_canvas.coords(self.ticker_text_id, x_pos, self.TICKER_HEIGHT // 2)
+        except queue.Empty:
+            pass
+        except Exception as e:
+            print(f"Error updating ticker canvas: {e}")
+        
+        if not self.is_destroying:
+            self.root.after(16, self._update_ticker_canvas)
+
     def start_ticker(self):
-        try:
-            if not self.player_manager.ticker_text:
-                self.player_manager.ticker_text = "KARUNYA INNOVATION AND DESIGN STUDIO • WELCOMES YOU ALL"
-            
-            if self.ticker_job:
-                try: self.root.after_cancel(self.ticker_job)
-                except: pass
-                self.ticker_job = None
-            
-            self.ticker_canvas.delete("all")
-            
-            self.ticker_bg_photo = self.create_translucent_background(self.screen_width, self.TICKER_HEIGHT, alpha=128)
-            
-            if self.ticker_bg_photo:
-                self.ticker_canvas.create_image(0, 0, anchor='nw', image=self.ticker_bg_photo, tags='ticker_bg')
-            else:
-                self.ticker_canvas.create_rectangle(0, 0, self.screen_width, self.TICKER_HEIGHT, fill='black', outline='', tags='ticker_bg')
-            
-            font_paths = ["arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
-            try:
-                font_size = max(16, int(self.screen_height * 0.03))
-                font = None
-                for font_path in font_paths:
-                    try:
-                        font = ImageFont.truetype(font_path, font_size)
-                        font_tuple = (font_path, font_size, "bold")
-                        break
-                    except: continue
-                if not font:
-                    font_tuple = ("Arial", 20, "bold")
-            except:
-                font_tuple = ("Arial", 20, "bold")
-            
-            self.ticker_x = self.screen_width + 50
-            
-            y_pos = self.TICKER_HEIGHT // 2
-            self.ticker_text_id = self.ticker_canvas.create_text(
-                self.ticker_x, y_pos,
-                text=self.player_manager.ticker_text,
-                fill='white', font=font_tuple, anchor='w')
-            
-            self.root.update_idletasks()
-            bbox = self.ticker_canvas.bbox(self.ticker_text_id)
-            self.ticker_text_width = (bbox[2] - bbox[0]) if bbox else len(self.player_manager.ticker_text) * 10
-            
-            self.ticker_running = True
-            self.animate_ticker()
-            print(f"🎪 DEFAULT TICKER started (ALWAYS RUNNING): '{self.player_manager.ticker_text}'")
-        except Exception as e:
-            print(f"Error starting ticker: {e}")
-    
-    def animate_ticker(self):
-        try:
-            if not self.ticker_running or not self.ticker_text_id:
-                return
-            
-            speed = max(1, int(self.player_manager.ticker_speed))
-            self.ticker_x -= speed
-            
-            reset_position = -(self.ticker_text_width + 100)
-            
-            if self.ticker_x <= reset_position:
-                self.ticker_x = self.screen_width + 50
-            
-            y_pos = self.TICKER_HEIGHT // 2
-            self.ticker_canvas.coords(self.ticker_text_id, self.ticker_x, y_pos)
-            
-            self.ticker_job = self.root.after(16, self.animate_ticker)
-        except Exception as e:
-            print(f"Error in ticker animation: {e}")
-            self.ticker_running = False
-            self.root.after(1000, self.start_ticker)
-    
+        if self.ticker_thread and self.ticker_thread.is_alive():
+            self.ticker_stop_event.set()
+            self.ticker_thread.join()
+        
+        # Clear previous ticker items from canvas
+        self.ticker_canvas.delete("all")
+        
+        # Setup the canvas items in the main thread
+        bg_photo = self.create_translucent_background(self.screen_width, self.TICKER_HEIGHT, alpha=128)
+        self.ticker_canvas.create_image(0, 0, anchor='nw', image=bg_photo, tags='ticker_bg')
+        self.ticker_canvas.image = bg_photo # Keep a reference
+
+        font_size = max(16, int(self.screen_height * 0.03))
+        self.ticker_text_id = self.ticker_canvas.create_text(
+            self.screen_width, self.TICKER_HEIGHT // 2,
+            text=self.player_manager.ticker_text,
+            fill='white', font=("Arial", font_size, "bold"), anchor='w'
+        )
+        
+        # Start the background thread for calculations
+        self.ticker_stop_event.clear()
+        self.ticker_thread = threading.Thread(target=self._ticker_thread_func)
+        self.ticker_thread.daemon = True
+        self.ticker_thread.start()
+        
+        # Start the GUI update loop
+        self.root.after(16, self._update_ticker_canvas)
+        
+        print(f"🎪 Ticker started: '{self.player_manager.ticker_text}'")
+
     def stop_ticker(self):
-        try:
-            self.ticker_running = False
-            if self.ticker_job:
-                try: self.root.after_cancel(self.ticker_job)
-                except: pass
-                self.ticker_job = None
-            print("⚠️ Ticker stopped (unusual - should be ALWAYS running)")
-        except Exception as e:
-            print(f"Error stopping ticker: {e}")
-    
+        self.ticker_stop_event.set()
+        if self.ticker_thread and self.ticker_thread.is_alive():
+            self.ticker_thread.join()
+        print("🛑 Ticker thread stopped.")
+
     def update_ticker(self):
         try:
             while not self.player_manager.ticker_update_queue.empty():
@@ -878,48 +835,72 @@ class UltraDisplayApp:
     def check_schedule(self):
         now = time.time()
         instant_update_triggered = self.player_manager.check_for_instant_updates()
+        
+        # Only check if 5 seconds have passed OR an instant update was triggered
         if now - self.last_schedule_check > 5 or instant_update_triggered:
             schedule_data = self.fetch_schedule()
             if not schedule_data:
                 self.last_schedule_check = now
                 return
-            
-            ticker_text = schedule_data.get("tickerText", "")
-            if ticker_text:
+
+            # --- Create unique hashes for the new content and ticker ---
+            media_list = schedule_data.get("media", [])
+            # A stable representation of media items for accurate comparison
+            media_identifiers = [(item.get('id'), item.get('playlistDuration')) for item in media_list]
+            new_content_hash = hashlib.md5(json.dumps(media_identifiers, sort_keys=True).encode()).hexdigest()
+
+            ticker_text = schedule_data.get("tickerText", "") or self.player_manager.ticker_text
+            ticker_speed = schedule_data.get("tickerSpeed", 2)
+            new_ticker_hash = hashlib.md5(f"{ticker_text}{ticker_speed}".encode()).hexdigest()
+
+            # --- Compare hashes and decide what to update ---
+
+            # 1. Check for Ticker updates
+            if new_ticker_hash != self.player_manager.last_ticker_hash:
+                print("🎯 Ticker content has changed. Updating ticker only.")
                 self.player_manager.ticker_update_queue.put({
-                    'text': ticker_text,
-                    'enabled': True,
-                    'speed': schedule_data.get("tickerSpeed", 2)
+                    'text': ticker_text, 'speed': ticker_speed
                 })
-            
+                self.player_manager.last_ticker_hash = new_ticker_hash
+
+            # 2. Check for Main Content updates (full reload)
             current_schedule = schedule_data.get("currentSchedule", {})
             current_schedule_id = current_schedule.get("id", "") if current_schedule else ""
             
-            if (current_schedule_id != self.player_manager.current_playing_schedule_id or self.player_manager.force_content_refresh):
-                print(f"🔄 CURRENTLY PLAYING schedule changed: {self.player_manager.current_playing_schedule_id} -> {current_schedule_id}")
-                print("📺 Restarting player with new content...")
+            content_changed = new_content_hash != self.player_manager.last_content_hash
+            schedule_id_changed = current_schedule_id != self.player_manager.current_playing_schedule_id
+
+            if content_changed or schedule_id_changed or self.player_manager.force_content_refresh:
+                reason = "New Schedule Assigned" if schedule_id_changed else "Media Content Updated"
+                print(f"🔄 Full content refresh triggered. Reason: {reason}.")
                 
                 self.player_manager.send_status("downloading")
                 if self.player_manager.vlc_player:
                     try: self.player_manager.vlc_player.stop()
                     except: pass
                 
-                self.current_media_list = self.download_all_media(schedule_data.get("media", []))
+                self.image_cache.clear()
+                self.current_media_list = self.download_all_media(media_list)
                 self.current_index = 0
                 self.current_media_item = None
                 
+                self.preload_images(self.current_media_list)
+                
+                # Update hashes and IDs after successful reload
                 self.player_manager.current_playing_schedule_id = current_schedule_id
+                self.player_manager.last_content_hash = new_content_hash
                 self.player_manager.force_content_refresh = False
                 
                 if current_schedule:
                     schedule_name = current_schedule.get("name", "Unknown")
-                    print(f"📺 Loaded schedule: {schedule_name}")
-                    print(f"🎬 Media items: {len(self.current_media_list)}")
+                    print(f"📺 Loaded schedule: {schedule_name} with {len(self.current_media_list)} items.")
                     self.player_manager.send_status("playing" if self.current_media_list else "idle")
                 else:
                     self.player_manager.send_status("idle")
-            else:
-                print("✅ Schedule checked. CURRENTLY PLAYING schedule unchanged, no restart needed.")
+
+            elif instant_update_triggered:
+                 print("✅ Instant update checked. No effective changes to content or ticker found.")
+
             self.last_schedule_check = now
     
     def display_current_media(self):
@@ -966,7 +947,7 @@ class UltraDisplayApp:
     def show_waiting_screen(self):
         if not self.current_media_list and (time.time() - self.last_schedule_check > 2):
             self.player_manager.push_playback_state(None, 'idle')
-            self.display_text("Waiting for content from CMS...")
+            self.display_text("Waiting for content ...")
     
     def main_loop(self):
         try:

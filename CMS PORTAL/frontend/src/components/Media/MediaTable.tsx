@@ -1,6 +1,6 @@
 // src/components/Media/MediaTable.tsx
 import React from 'react';
-import { MediaItem } from '../../types';
+import { MediaItem, User } from '../../types';
 import { Image, Video, Type, Trash, Eye, FileText, Link as LinkIcon } from 'lucide-react';
 
 interface MediaTableProps {
@@ -8,6 +8,7 @@ interface MediaTableProps {
   onDelete: (media: MediaItem) => void;
   onPreview: (media: MediaItem) => void;
   canEdit: boolean;
+  currentUser: User | null;
 }
 
 const MediaTable: React.FC<MediaTableProps> = ({
@@ -15,6 +16,7 @@ const MediaTable: React.FC<MediaTableProps> = ({
   onDelete,
   onPreview,
   canEdit,
+  currentUser,
 }) => {
   const getTypeIcon = (type: MediaItem['type']) => {
     switch (type) {
@@ -22,8 +24,6 @@ const MediaTable: React.FC<MediaTableProps> = ({
         return <Image className="inline-block mr-1" />;
       case 'video':
         return <Video className="inline-block mr-1" />;
-      case 'text':
-        return <Type className="inline-block mr-1" />;
       case 'document-group':
         return <FileText className="inline-block mr-1" />;
       case 'url':
@@ -46,6 +46,18 @@ const MediaTable: React.FC<MediaTableProps> = ({
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const canDelete = (item: MediaItem) => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'root') return true;
+    if (currentUser.role === 'supervisor') {
+      return item.uploadedBy !== 'root';
+    }
+    if (currentUser.role === 'user') {
+      return item.uploadedBy === currentUser.username;
+    }
+    return false;
   };
 
   if (media.length === 0) {
@@ -113,14 +125,16 @@ const MediaTable: React.FC<MediaTableProps> = ({
                 >
                   <Eye />
                 </button>
-                <button
-                  onClick={() => onDelete(item)}
-                  title="Delete Media"
-                  className="text-red-600 hover:text-red-800"
-                  aria-label={`Delete ${item.name}`}
-                >
-                  <Trash />
-                </button>
+                {canDelete(item) && (
+                  <button
+                    onClick={() => onDelete(item)}
+                    title="Delete Media"
+                    className="text-red-600 hover:text-red-800"
+                    aria-label={`Delete ${item.name}`}
+                  >
+                    <Trash />
+                  </button>
+                )}
               </td>
             )}
           </tr>
